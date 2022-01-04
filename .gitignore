@@ -5,6 +5,8 @@
 # session
 Session.vi
 
+.DS_Store
+
 # jetbrains project files
 .idea
 
