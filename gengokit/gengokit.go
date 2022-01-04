@@ -9,8 +9,8 @@ import (
 	generatego "github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/pkg/errors"
 
-	"github.com/metaverse/truss/gengokit/httptransport"
-	"github.com/metaverse/truss/svcdef"
+	"github.com/shore-cheng/truss/gengokit/httptransport"
+	"github.com/shore-cheng/truss/svcdef"
 )
 
 type Renderable interface {

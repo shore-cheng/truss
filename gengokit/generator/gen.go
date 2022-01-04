@@ -8,20 +8,22 @@ import (
 	"io/ioutil"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
-
-	"github.com/metaverse/truss/gengokit"
-	"github.com/metaverse/truss/gengokit/handlers"
-	templFiles "github.com/metaverse/truss/gengokit/template"
-
-	"github.com/metaverse/truss/svcdef"
+	"github.com/shore-cheng/truss/gengokit"
+	clientTemplateFiles "github.com/shore-cheng/truss/gengokit/clienttemplate"
+	"github.com/shore-cheng/truss/gengokit/handlers"
+	templateFiles "github.com/shore-cheng/truss/gengokit/template"
+	"github.com/shore-cheng/truss/svcdef"
+	log "github.com/sirupsen/logrus"
 )
+
+const ClientGrpcPath = "grpc/NAME/client.gotemplate"
+const ClientHttpPath = "http/NAME/client.gotemplate"
 
 // GenerateGokit returns a gokit service generated from a service definition (svcdef),
 // the package to the root of the generated service goPackage, the package
 // to the .pb.go service struct files (goPBPackage) and any prevously generated files.
-func GenerateGokit(sd *svcdef.Svcdef, conf gengokit.Config) (map[string]io.Reader, error) {
+func GenerateGokit(sd *svcdef.Svcdef, conf gengokit.Config, isClientFlag bool) (map[string]io.Reader, error) {
 	data, err := gengokit.NewData(sd, conf)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create template data")
@@ -31,7 +33,13 @@ func GenerateGokit(sd *svcdef.Svcdef, conf gengokit.Config) (map[string]io.Reade
 
 	// Remove the suffix "-service" since it's added back in by templatePathToActual
 	svcname := strings.ToLower(sd.Service.Name)
-	for _, templPath := range templFiles.AssetNames() {
+
+	assetNames := templateFiles.AssetNames()
+	if isClientFlag {
+		assetNames = clientTemplateFiles.AssetNames()
+	}
+
+	for _, templPath := range assetNames {
 		// Re-derive the actual path for this file based on the service output
 		// path provided by the truss main.go
 		actualPath := templatePathToActual(templPath, svcname)
@@ -79,8 +87,15 @@ func generateResponseFile(templFP string, data *gengokit.Data, prevFile io.Reade
 		if genCode, err = m.Render(templFP, data); err != nil {
 			return nil, errors.Wrapf(err, "cannot render template: %s", templFP)
 		}
+
+	case ClientGrpcPath, ClientHttpPath:
+		if genCode, err = applyClientTemplateFromPath(templFP, data); err != nil {
+			log.WithField("appltTempate", templFP).Debug()
+			return nil, errors.Wrapf(err, "cannot render template: %s", templFP)
+		}
 	default:
 		if genCode, err = applyTemplateFromPath(templFP, data); err != nil {
+			log.WithField("appltTempate", templFP).Debug()
 			return nil, errors.Wrapf(err, "cannot render template: %s", templFP)
 		}
 	}
@@ -112,7 +127,17 @@ func templatePathToActual(templFilePath, svcName string) string {
 
 // applyTemplateFromPath calls applyTemplate with the template at templFilePath
 func applyTemplateFromPath(templFP string, data *gengokit.Data) (io.Reader, error) {
-	templBytes, err := templFiles.Asset(templFP)
+	templBytes, err := templateFiles.Asset(templFP)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to find template file: %v", templFP)
+	}
+
+	return data.ApplyTemplate(string(templBytes), templFP)
+}
+
+// applyTemplateFromPath calls applyTemplate with the template at templFilePath
+func applyClientTemplateFromPath(templFP string, data *gengokit.Data) (io.Reader, error) {
+	templBytes, err := clientTemplateFiles.Asset(templFP)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to find template file: %v", templFP)
 	}

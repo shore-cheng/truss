@@ -15,14 +15,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 
-	"github.com/metaverse/truss/truss"
-	"github.com/metaverse/truss/truss/execprotoc"
-	"github.com/metaverse/truss/truss/getstarted"
-	"github.com/metaverse/truss/truss/parsesvcname"
+	"github.com/shore-cheng/truss/truss"
+	"github.com/shore-cheng/truss/truss/execprotoc"
+	"github.com/shore-cheng/truss/truss/getstarted"
+	"github.com/shore-cheng/truss/truss/parsesvcname"
 
-	ggkconf "github.com/metaverse/truss/gengokit"
-	gengokit "github.com/metaverse/truss/gengokit/generator"
-	"github.com/metaverse/truss/svcdef"
+	ggkconf "github.com/shore-cheng/truss/gengokit"
+	gengokit "github.com/shore-cheng/truss/gengokit/generator"
+	"github.com/shore-cheng/truss/svcdef"
 )
 
 var (
@@ -30,6 +30,7 @@ var (
 	verboseFlag    = flag.BoolP("verbose", "v", false, "Verbose output")
 	helpFlag       = flag.BoolP("help", "h", false, "Print usage")
 	getStartedFlag = flag.BoolP("getstarted", "", false, "Output a 'getstarted.proto' protobuf file in ./")
+	isClientFlag   = flag.BoolP("client", "c", false, "Switch to Generate Client Code")
 )
 
 var binName = filepath.Base(os.Args[0])
@@ -114,7 +115,7 @@ func main() {
 		log.Fatal(errors.Wrap(err, "cannot parse input definition proto files"))
 	}
 
-	genFiles, err := generateCode(cfg, sd)
+	genFiles, err := generateCode(cfg, sd, *isClientFlag)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "cannot generate service"))
 	}
@@ -281,7 +282,7 @@ func parseServiceDefinition(cfg *truss.Config) (*svcdef.Svcdef, error) {
 
 // generateCode returns a map[string]io.Reader that represents a gokit
 // service
-func generateCode(cfg *truss.Config, sd *svcdef.Svcdef) (map[string]io.Reader, error) {
+func generateCode(cfg *truss.Config, sd *svcdef.Svcdef, isClientFlag bool) (map[string]io.Reader, error) {
 	conf := ggkconf.Config{
 		PBPackage:     cfg.PBPackage,
 		GoPackage:     cfg.ServicePackage,
@@ -290,7 +291,7 @@ func generateCode(cfg *truss.Config, sd *svcdef.Svcdef) (map[string]io.Reader, e
 		VersionDate:   date,
 	}
 
-	genGokitFiles, err := gengokit.GenerateGokit(sd, conf)
+	genGokitFiles, err := gengokit.GenerateGokit(sd, conf, isClientFlag)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot generate gokit service")
 	}
@@ -473,7 +474,7 @@ Do you want to automatically run 'make' and rerun command:
 	return false
 }
 
-const trussImportPath = "github.com/metaverse/truss"
+const trussImportPath = "github.com/shore-cheng/truss"
 
 // makeAndRunTruss installs truss by running make in trussImportPath.
 // It then passes through args to newly installed truss.
